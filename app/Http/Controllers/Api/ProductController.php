@@ -10,13 +10,48 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    public function index()
+    // GET: Menampilkan semua produk, pencarian, filter, dan pagination
+    public function index(Request $request)
     {
+        $query = Product::with('category');
+
+        // Pencarian berdasarkan nama produk
+        $keyword = $request->input(
+            'keyword',
+            $request->input('search')
+        );
+
+        if ($keyword) {
+            $query->where(
+                'name',
+                'like',
+                '%' . $keyword . '%'
+            );
+        }
+
+        // Filter berdasarkan kategori
+        if ($request->filled('category_id')) {
+            $query->where(
+                'category_id',
+                $request->category_id
+            );
+        }
+
+        // Pagination
+        $perPage = $request->input(
+            'limit',
+            $request->input('per_page', 10)
+        );
+
+        // Membatasi jumlah data per halaman
+        $perPage = max(1, min((int) $perPage, 100));
+
         return ProductResource::collection(
-            Product::with('category')->get()
+            $query->paginate($perPage)
         );
     }
 
+    // POST: Menambahkan produk
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -39,6 +74,7 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
+    // GET: Menampilkan detail satu produk
     public function show(string $id)
     {
         $product = Product::with('category')->findOrFail($id);
@@ -46,6 +82,7 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
+    // PUT/PATCH: Mengubah produk
     public function update(Request $request, string $id)
     {
         $product = Product::findOrFail($id);
@@ -76,6 +113,7 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
+    // DELETE: Menghapus produk
     public function destroy(string $id)
     {
         $product = Product::findOrFail($id);
